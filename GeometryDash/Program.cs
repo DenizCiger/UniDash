@@ -26,7 +26,7 @@ namespace GeometryDash
 
         //GamePlay Config
         static LevelGrid[,] level = new LevelGrid[10, 10];
-        static readonly string[] UI_PATHS = { "Logo.txt" };
+        static readonly string[] UI_PATHS = { "UI\\Logo.txt", "UI\\Pause.txt" };
         static readonly string[] LEVEL_PATHS = { "Data\\Levels\\StereoMadness.dat", "Data\\Levels\\BackOnTrack.dat", "Data\\Levels\\Polargeist.dat" };
         static readonly string[] SONG_PATHS = { "Data\\Songs\\StereoMadness.wav", "Data\\Songs\\BackOnTrack.wav", "Data\\Songs\\Polargeist.wav" };
         static readonly float[] speedValues = { 8.4f, 10.41667f, 12.91667f, 15.667f, 19.2f };
@@ -35,8 +35,9 @@ namespace GeometryDash
         static ConsoleColor floorStartColor = new ConsoleColor();
         static int startGameMode = 0;
         static int startSpeed = 0;
+        const int PAUSE_BUTTONS = 10; //Practice, Reset, Main Menu
 
-        const int MILLIS_PER_TICK = 50;
+        const int MILLIS_PER_TICK = 10;
 
         const int VIEWABLE_UP = 5;
         const int VIEWABLE_DOWN = 5;
@@ -44,7 +45,7 @@ namespace GeometryDash
         const int VIEWABLE_RIGHT = 11;
 
         const float JUMP_FORCE = 12.65795f / 2;
-        const float FALLING_SPEED = 12.63245f/2;
+        const float FALLING_SPEED = 12.63245f / 2;
 
         const char BLOCK_CHAR = '\u25A0';
         const char PLAYER_CHAR = '\u25A0';//'\u25A1';
@@ -63,6 +64,7 @@ namespace GeometryDash
         static Stopwatch time = new Stopwatch();
         static Stopwatch triggerDuration = new Stopwatch();
         static float deltaTime = 1000f;
+        static bool died = false;
 
         static int currentGamemode = 1; // 0 cube 1 ship 2 ball 3 ufo 4 wave 5 robot 6 spider
         static ConsoleColor currentBackgroundColor = new ConsoleColor();
@@ -108,9 +110,16 @@ namespace GeometryDash
                 UpdateGame(gameSound);
                 Thread.Sleep(MILLIS_PER_TICK);
 
-                time.Stop();
-                deltaTime = time.ElapsedMilliseconds;
-                time.Reset();
+                if (!died)
+                {
+                    time.Stop();
+                    deltaTime = time.ElapsedMilliseconds;
+                    time.Reset();
+                }
+                else
+                {
+                    died = false;
+                }
             }
         }
 
@@ -227,102 +236,193 @@ namespace GeometryDash
                 }
             }
 
-            playerX += (float)speedValues[startSpeed] * (deltaTime / 1100f);
-
-            if (playerJumping)
+            if (!died)
             {
+                playerX += (float)speedValues[startSpeed] * (deltaTime / 1100f);
 
-                //JumpForce is 12.65795 Units per 0.2secs
-                playerY += JUMP_FORCE * (deltaTime / 500f);
-
-                if (playerY > oldYPos + 2f)
+                if (playerJumping)
                 {
-                    playerJumping = false;
-                    playerY = oldYPos + 2f;
-                }
-            }
-            else if (playerJumpPad)
-            {
-                playerY += JUMP_FORCE * 3 * ((float)MILLIS_PER_TICK / 600f);
 
-                if (playerY > oldYPos + 4.5f)
-                {
-                    playerJumpPad = false;
-                    playerY = oldYPos + 4.5f;
-                }
-            }
-            else
-            {
-                if (playerY > 0 && !IsStandingOnBlock((int)Math.Round(playerY), (int)Math.Round(playerX)))
-                {
-                    float distanceToFall = 0;
+                    //JumpForce is 12.65795 Units per 0.2secs
+                    playerY += JUMP_FORCE * (deltaTime / 600);
 
-                    if (currentGamemode == 0)
+                    if (playerY > oldYPos + 2f)
                     {
-                        //FallSpeed is 14.63245 Units per 0.5secs
-                        distanceToFall = FALLING_SPEED * ((float)MILLIS_PER_TICK / 500f);
+                        playerJumping = false;
+                        playerY = oldYPos + 2f;
                     }
-                    else if (currentGamemode == 1)
+                }
+                else if (playerJumpPad)
+                {
+                    playerY += JUMP_FORCE * 3 * (deltaTime / 600f);
+
+                    if (playerY > oldYPos + 4.5f)
                     {
-                        distanceToFall = 2f * ((float)MILLIS_PER_TICK / 500f);
+                        playerJumpPad = false;
+                        playerY = oldYPos + 4.5f;
                     }
-
-                    bool isOkPos = false;
-
-                    while (!isOkPos)
+                }
+                else
+                {
+                    if (playerY > 0 && !IsStandingOnBlock((int)Math.Round(playerY), (int)Math.Round(playerX)))
                     {
-                        if (distanceToFall > 0)
+                        float distanceToFall = 0;
+
+                        if (currentGamemode == 0)
                         {
-                            if ((int)Math.Round(playerY - distanceToFall) >= 0 && level[(int)Math.Round(playerY - distanceToFall), roundedPlayerX] != null && blockList.Contains(level[(int)Math.Round(playerY - distanceToFall), roundedPlayerX].GetObjectID()))
+                            //FallSpeed is 14.63245 Units per 0.5secs
+                            distanceToFall = FALLING_SPEED * (deltaTime / 600f);
+                        }
+                        else if (currentGamemode == 1)
+                        {
+                            distanceToFall = 2f * (deltaTime / 500f);
+                        }
+
+                        bool isOkPos = false;
+
+                        while (!isOkPos)
+                        {
+                            if (distanceToFall > 0)
                             {
-                                distanceToFall -= 1;
+                                if ((int)Math.Round(playerY - distanceToFall) >= 0 && level[(int)Math.Round(playerY - distanceToFall), roundedPlayerX] != null && blockList.Contains(level[(int)Math.Round(playerY - distanceToFall), roundedPlayerX].GetObjectID()))
+                                {
+                                    distanceToFall -= 1;
+                                }
+                                else
+                                {
+                                    isOkPos = true;
+                                }
                             }
                             else
                             {
                                 isOkPos = true;
+                                distanceToFall = 0;
                             }
                         }
-                        else
+                        playerY -= distanceToFall;
+                    }
+                }
+
+                if (playerY < 0)
+                {
+                    playerY = 0;
+                }
+
+                if (Console.KeyAvailable)
+                {
+                    if (Console.ReadKey(true).Key == ConsoleKey.Spacebar)
+                    {
+                        if (currentGamemode == 0)
                         {
-                            isOkPos = true;
-                            distanceToFall = 0;
+                            PlayerJump();
+                        }
+                        else if (currentGamemode == 1)
+                        {
+                            playerY += 6f * ((float)MILLIS_PER_TICK / 500f);
                         }
                     }
-                    playerY -= distanceToFall;
-                }
-            }
-
-            if (playerY < 0)
-            {
-                playerY = 0;
-            }
-
-            if (Console.KeyAvailable)
-            {
-                if (Console.ReadKey(true).Key == ConsoleKey.Spacebar)
-                {
-                    if (currentGamemode == 0)
+                    else if (Console.ReadKey(true).Key == ConsoleKey.Escape)
                     {
-                        PlayerJump();
-                    }
-                    else if (currentGamemode == 1)
-                    {
-                        playerY += 6f * ((float)MILLIS_PER_TICK / 500f);
+                        PauseGame(gameSound);
                     }
                 }
-                else if (Console.ReadKey(true).Key == ConsoleKey.Escape)
-                {
-                    PauseGame(gameSound);
-                }
+                PrintState();
             }
-            PrintState();
         }
 
         private static void PauseGame(SoundPlayer gameSound)
         {
+            int currentButtonSelected = 1;
+            int previousButton = 1;
+            bool pressedEnter = false;
+            int cursorX = (currentButtonSelected * 8) + 5;
+
+            Console.ResetColor();
             Console.Clear();
-            gameSound.
-            
+            gameSound.Stop();
+            string pauseMenu = File.ReadAllText(UI_PATHS[1]);
+
+            Console.SetCursorPosition(0, 0);
+            Console.WriteLine(pauseMenu);
+
+            Console.SetCursorPosition(cursorX, 5);
+            Console.Write(">>");
+            Console.SetCursorPosition(cursorX + 5, 5);
+            Console.Write("<<");
+
+            while (!pressedEnter)
+            {
+
+                if (previousButton != currentButtonSelected)
+                {
+                    Console.SetCursorPosition(cursorX, 5);
+                    Console.Write("  ");
+                    Console.SetCursorPosition(cursorX + 5, 5);
+                    Console.Write("  ");
+
+                    cursorX = (currentButtonSelected * 8) + 5;
+
+                    Console.SetCursorPosition(0, 0);
+                    Console.WriteLine(pauseMenu);
+
+                    Console.SetCursorPosition(cursorX, 5);
+                    Console.Write(">>");
+                    Console.SetCursorPosition(cursorX + 5, 5);
+                    Console.Write("<<");
+
+                    previousButton = currentButtonSelected;
+                }
+
+                if (Console.KeyAvailable)
+                {
+                    ConsoleKey pressedKey = Console.ReadKey(true).Key;
+
+                    switch (pressedKey)
+                    {
+                        case ConsoleKey.Enter:
+                            pressedEnter = true;
+                            break;
+                        case ConsoleKey.RightArrow:
+                            currentButtonSelected++;
+
+                            if (currentButtonSelected >= PAUSE_BUTTONS)
+                            {
+                                currentButtonSelected = 0;
+                            }
+
+                            break;
+                        case ConsoleKey.LeftArrow:
+                            currentButtonSelected--;
+
+                            if (currentButtonSelected < 0)
+                            {
+                                currentButtonSelected = PAUSE_BUTTONS - 1;
+                            }
+
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            Console.Clear();
+
+            switch (currentButtonSelected)
+            {
+                case 0:
+                    Console.WriteLine("Not implemented yet!\n Press any key to continue to the Menu...");
+                    Console.ReadKey();
+                    LevelSelect();
+                    break;
+                case 1:
+                    PlayerDieEvent(gameSound);
+                    break;
+                case 2:
+                    LevelSelect();
+                    break;
+            }
+
         }
 
         private static string[] GetTriggerLocations(int roundedPlayerX)
@@ -395,6 +495,9 @@ namespace GeometryDash
 
             playerX = 0;
             playerY = 0;
+            time.Stop();
+            time.Reset();
+            deltaTime = MILLIS_PER_TICK;
         }
 
         private static void PlayerDieEvent(SoundPlayer gameSound)
@@ -403,8 +506,14 @@ namespace GeometryDash
             currentGamemode = startGameMode;
             currentBackgroundColor = backgroundStartColor;
             currentFloorColor = floorStartColor;
+
             gameSound.Stop();
             gameSound.Play();
+            
+            time.Stop();
+            time.Reset();
+            deltaTime = MILLIS_PER_TICK;
+            died = true;
         }
 
         private static void PlayerJump()
