@@ -13,6 +13,7 @@ using System.Drawing;
 using System.Linq;
 using System.Media;
 using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using Test;
 
 #pragma warning disable CA1416 // Plattformkompatibilität überprüfen
@@ -23,6 +24,10 @@ namespace GeometryDash
 
     internal class Program
     {
+        //Compatability Variables
+        static int osVersion = Convert.ToInt32(Environment.OSVersion.Version.Major);
+        static int osBuildNumb = Convert.ToInt32(Environment.OSVersion.Version.Build.ToString());
+        static int winVersion = 0;
 
         //GamePlay Config
         static LevelGrid[,] level = new LevelGrid[10, 10];
@@ -30,7 +35,7 @@ namespace GeometryDash
         static readonly string[] LEVEL_PATHS = { "Data\\Levels\\StereoMadness.dat", "Data\\Levels\\BackOnTrack.dat", "Data\\Levels\\Polargeist.dat" };
         static readonly string[] SONG_PATHS = { "Data\\Songs\\StereoMadness.wav", "Data\\Songs\\BackOnTrack.wav", "Data\\Songs\\Polargeist.wav" };
         static readonly float[] speedValues = { 8.4f, 10.41667f, 12.91667f, 15.667f, 19.2f };
-        static SoundPlayer gameSound;
+        static SoundPlayer gameSound = new SoundPlayer();
         static ConsoleColor backgroundStartColor = new ConsoleColor();
         static ConsoleColor floorStartColor = new ConsoleColor();
         static int startGameMode = 0;
@@ -65,6 +70,7 @@ namespace GeometryDash
         static Stopwatch triggerDuration = new Stopwatch();
         static float deltaTime = 1000f;
         static bool died = false;
+        static long attempts = 0;
 
         static int currentGamemode = 1; // 0 cube 1 ship 2 ball 3 ufo 4 wave 5 robot 6 spider
         static ConsoleColor currentBackgroundColor = new ConsoleColor();
@@ -99,27 +105,45 @@ namespace GeometryDash
             Console.SetWindowSize(Console.LargestWindowWidth / 2, Console.LargestWindowHeight / 2);
             Console.Title = "UniDash";
 
-            LevelSelect();
-
-            gameSound.Play();
-
-            while (true)
+            if (OperatingSystem.IsWindows() && osVersion >= 10)
             {
-                time.Start();
-
-                UpdateGame(gameSound);
-                Thread.Sleep(MILLIS_PER_TICK);
-
-                if (!died)
+                if (osBuildNumb >= 22000)
                 {
-                    time.Stop();
-                    deltaTime = time.ElapsedMilliseconds;
-                    time.Reset();
+                    winVersion = 11;
                 }
                 else
                 {
-                    died = false;
+                    winVersion = 10;
                 }
+
+                LevelSelect();
+
+                gameSound.Play();
+
+                while (true)
+                {
+                    time.Start();
+
+                    UpdateGame(gameSound);
+                    Thread.Sleep(MILLIS_PER_TICK);
+
+                    if (!died)
+                    {
+                        time.Stop();
+                        deltaTime = time.ElapsedMilliseconds;
+                        time.Reset();
+                    }
+                    else
+                    {
+                        died = false;
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("This project is only made for Windows version 10 or higher!");
+                Console.WriteLine("Press any key to end the program...");
+                Console.ReadKey();
             }
         }
 
@@ -321,7 +345,7 @@ namespace GeometryDash
                             playerY += 6f * ((float)MILLIS_PER_TICK / 500f);
                         }
                     }
-                    else if (Console.ReadKey(true).Key == ConsoleKey.Escape)
+                    else if (Console.ReadKey(true).Key == ConsoleKey.Backspace)
                     {
                         PauseGame(gameSound);
                     }
@@ -495,6 +519,7 @@ namespace GeometryDash
 
             playerX = 0;
             playerY = 0;
+            attempts = 1;
             time.Stop();
             time.Reset();
             deltaTime = MILLIS_PER_TICK;
@@ -502,7 +527,6 @@ namespace GeometryDash
 
         private static void PlayerDieEvent(SoundPlayer gameSound)
         {
-            playerY = 0; playerX = 0;
             currentGamemode = startGameMode;
             currentBackgroundColor = backgroundStartColor;
             currentFloorColor = floorStartColor;
@@ -512,6 +536,9 @@ namespace GeometryDash
             
             time.Stop();
             time.Reset();
+            playerY = 0;
+            playerX = 0;
+            attempts++;
             deltaTime = MILLIS_PER_TICK;
             died = true;
         }
@@ -593,6 +620,8 @@ namespace GeometryDash
                         if (cursorY == defaultCursorY + VIEWABLE_UP && cursorX == defaultCursorX + VIEWABLE_LEFT)
                         {
                             Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            FixSameColor();
+
                             Console.Write(PLAYER_CHAR);
                         }
                         else
@@ -612,11 +641,13 @@ namespace GeometryDash
                             else if (blockList.Contains(currentTile)) // Is Block
                             {
                                 Console.ForegroundColor = ConsoleColor.White;
+                                FixSameColor();
                                 Console.Write(BLOCK_CHAR);
                             }
                             else if (spikeList.Contains(currentTile)) // Is Spike
                             {
                                 Console.ForegroundColor = ConsoleColor.Black;
+                                FixSameColor();
                                 Console.Write(SPIKE_CHAR);
                             }
                             else if (portalList.Contains(currentTile))
@@ -640,22 +671,24 @@ namespace GeometryDash
                                         break;
                                 }
 
+                                FixSameColor();
                                 Console.Write(PORTAL_CHAR);
                             }
                             else if (currentTile == 35) // Is Jump Pad
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
+                                FixSameColor();
                                 Console.Write(JUMP_PAD_CHAR);
                             }
                             else if (currentTile == 36) // Is Jump Orb
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
+                                FixSameColor();
                                 Console.Write(ORB_CHAR);
                             }
                             else
                             {
-                                Console.ForegroundColor = GetRandomConsoleColor();
-                                Console.Write(new Random().Next(0, 10));
+                                Console.Write(" ");
                             }
 
                         }
@@ -664,19 +697,7 @@ namespace GeometryDash
                     else
                     {
                         Console.ForegroundColor = currentFloorColor;
-
-                        if (currentFloorColor == currentBackgroundColor)
-                        {
-                            if (currentBackgroundColor != ConsoleColor.White)
-                            {
-                                Console.BackgroundColor = ConsoleColor.White;
-                            }
-                            else
-                            {
-                                Console.BackgroundColor = ConsoleColor.Black;
-                            }
-                        }
-
+                        FixSameColor();
                         Console.Write(BLOCK_CHAR);
                     }
                 }
@@ -685,7 +706,25 @@ namespace GeometryDash
             }
 
             Console.SetCursorPosition(0, cursorY + 5);
-            Console.WriteLine($"X: {playerX,-10:f2} Y: {playerY,-10:f2}");
+            Console.BackgroundColor = ConsoleColor.Black;
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"Attempt {attempts}");
+        }
+
+        private static void FixSameColor()
+        {
+            if (Console.ForegroundColor == currentBackgroundColor)
+            {
+                if (currentBackgroundColor != ConsoleColor.White)
+                {
+                    Console.BackgroundColor = ConsoleColor.White;
+                }
+                else
+                {
+                    Console.BackgroundColor = ConsoleColor.Black;
+                }
+            }
         }
 
         private static void Configurelevel()
