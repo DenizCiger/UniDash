@@ -17,6 +17,7 @@ using System.Runtime.InteropServices;
 using Test;
 
 #pragma warning disable CA1416 // Plattformkompatibilität überprüfen
+#pragma warning disable CS8605 // Unboxing a possibly null value.
 
 namespace GeometryDash
 {
@@ -31,15 +32,19 @@ namespace GeometryDash
 
         //GamePlay Config
         static LevelGrid[,] level = new LevelGrid[10, 10];
-        static readonly string[] UI_PATHS = { "UI\\Logo.txt", "UI\\Pause.txt" };
+        static readonly string[] UI_PATHS = { "UI\\Logo.txt", "UI\\Pause.txt", "UI\\Level.txt" };
         static readonly string[] LEVEL_PATHS = { "Data\\Levels\\StereoMadness.dat", "Data\\Levels\\BackOnTrack.dat", "Data\\Levels\\Polargeist.dat" };
         static readonly string[] SONG_PATHS = { "Data\\Songs\\StereoMadness.wav", "Data\\Songs\\BackOnTrack.wav", "Data\\Songs\\Polargeist.wav" };
+        static readonly string[] LEVEL_NAMES = { "Stereo Madness", "Back On Track", "Polargeist" };
+        static int[] LEVEL_ATTEMPTS = { 0, 0, 0 };
         static readonly float[] speedValues = { 8.4f, 10.41667f, 12.91667f, 15.667f, 19.2f };
         static SoundPlayer gameSound = new SoundPlayer();
         static ConsoleColor backgroundStartColor = new ConsoleColor();
         static ConsoleColor floorStartColor = new ConsoleColor();
+        static ConsoleColor player_color;
         static int startGameMode = 0;
         static int startSpeed = 0;
+
         const int PAUSE_BUTTONS = 10; //Practice, Reset, Main Menu
 
         const int MILLIS_PER_TICK = 10;
@@ -86,7 +91,7 @@ namespace GeometryDash
         static byte blueDifference = 0;
 
         //Hacks
-        static bool noClip = false;
+        static bool noClip = true;
 
         //Debug Config
         static bool showDebugPercentage = false;
@@ -99,11 +104,14 @@ namespace GeometryDash
         static bool debugRotation = false;
         static bool debugTriggers = false;
         static bool debugNotImplemented = false;
+
+
         static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.SetWindowSize(Console.LargestWindowWidth / 2, Console.LargestWindowHeight / 2);
             Console.Title = "UniDash";
+            player_color = GetRandomConsoleColor();
 
             if (OperatingSystem.IsWindows() && osVersion >= 10)
             {
@@ -117,8 +125,6 @@ namespace GeometryDash
                 }
 
                 LevelSelect();
-
-                gameSound.Play();
 
                 while (true)
                 {
@@ -146,6 +152,7 @@ namespace GeometryDash
                 Console.ReadKey();
             }
         }
+
 
         private static int GetLevelNumb()
         {
@@ -177,6 +184,7 @@ namespace GeometryDash
             int roundedPlayerY = (int)Math.Round(playerY);
             int roundedPlayerX = (int)Math.Round(playerX);
             int currentTile;
+            int portalTile = 0;
             Console.CursorVisible = false;
 
 
@@ -200,9 +208,9 @@ namespace GeometryDash
                     PlayerDieEvent(gameSound);
                 }
             }
-            else if (IsInPortal(roundedPlayerX, roundedPlayerY))
+            else if (IsInPortal(roundedPlayerX, roundedPlayerY, ref portalTile))
             {
-                switch (currentTile)
+                switch (portalTile)
                 {
                     case 13: //Ship Portal
                         currentGamemode = 1;
@@ -262,7 +270,7 @@ namespace GeometryDash
 
             if (!died)
             {
-                playerX += (float)speedValues[startSpeed] * (deltaTime / 1100f);
+                playerX += (float)speedValues[startSpeed] * (deltaTime / 1000f);
 
                 if (playerJumping)
                 {
@@ -292,12 +300,12 @@ namespace GeometryDash
                     {
                         float distanceToFall = 0;
 
-                        if (currentGamemode == 0)
+                        if (currentGamemode == 0) //Cube
                         {
                             //FallSpeed is 14.63245 Units per 0.5secs
                             distanceToFall = FALLING_SPEED * (deltaTime / 600f);
                         }
-                        else if (currentGamemode == 1)
+                        else if (currentGamemode == 1) //Ship
                         {
                             distanceToFall = 2f * (deltaTime / 500f);
                         }
@@ -342,7 +350,7 @@ namespace GeometryDash
                         }
                         else if (currentGamemode == 1)
                         {
-                            playerY += 6f * ((float)MILLIS_PER_TICK / 500f);
+                            playerY += 6f * (deltaTime / 500f);
                         }
                     }
                     else if (Console.ReadKey(true).Key == ConsoleKey.Backspace)
@@ -485,7 +493,7 @@ namespace GeometryDash
             return triggersTrigger;
         }
 
-        private static bool IsInPortal(int roundedPlayerX, int roundedPlayerY)
+        private static bool IsInPortal(int roundedPlayerX, int roundedPlayerY, ref int portalTile)
         {
             bool isInPortal = false;
 
@@ -495,6 +503,7 @@ namespace GeometryDash
                 if (checkPosY < level.GetLength(0) && checkPosY >= 0 && level[checkPosY, roundedPlayerX] != null && portalList.Contains(level[checkPosY, roundedPlayerX].GetObjectID()))
                 {
                     isInPortal = true;
+                    portalTile = level[checkPosY, roundedPlayerX].GetObjectID();
                 }
             }
 
@@ -510,9 +519,41 @@ namespace GeometryDash
         {
             Console.ResetColor();
             Console.Clear();
-            Console.WriteLine(File.ReadAllText(UI_PATHS[0]));
+            Console.CursorVisible = false;
 
-            levelNumb = GetLevelNumb() - 1;
+            bool selectedLevel = false;
+            int currentShownLevel = 0;
+
+            while (!selectedLevel)
+            {
+                PrintLevelSelect(currentShownLevel);
+
+                ConsoleKey pressedKey = Console.ReadKey(true).Key;
+
+                if (pressedKey == ConsoleKey.Enter)
+                {
+                    selectedLevel = true;
+                }
+                else if (pressedKey == ConsoleKey.LeftArrow)
+                {
+                    currentShownLevel--;
+                }
+                else if (pressedKey == ConsoleKey.RightArrow)
+                {
+                    currentShownLevel++;
+                }
+
+                if (currentShownLevel >= LEVEL_NAMES.Length)
+                {
+                    currentShownLevel = 0;
+                }
+                else if (currentShownLevel < 0)
+                {
+                    currentShownLevel = LEVEL_NAMES.Length - 1;
+                }
+            }
+
+            levelNumb = currentShownLevel;
 
             gameSound = new(SONG_PATHS[levelNumb]);
             Configurelevel();
@@ -523,6 +564,19 @@ namespace GeometryDash
             time.Stop();
             time.Reset();
             deltaTime = MILLIS_PER_TICK;
+            gameSound.Play();
+        }
+
+        private static void PrintLevelSelect(int currentLevel)
+        {
+            Console.SetCursorPosition(0, 0);
+            Console.WriteLine(File.ReadAllText(UI_PATHS[0]));
+            Console.SetCursorPosition(0, 10);
+            Console.WriteLine(File.ReadAllText(UI_PATHS[2]));
+            Console.SetCursorPosition(8, 13);
+            Console.WriteLine(LEVEL_NAMES[currentLevel]);
+            Console.SetCursorPosition(8, 15);
+            Console.WriteLine($"{LEVEL_ATTEMPTS[currentLevel]} Attempts");
         }
 
         private static void PlayerDieEvent(SoundPlayer gameSound)
@@ -533,12 +587,13 @@ namespace GeometryDash
 
             gameSound.Stop();
             gameSound.Play();
-            
+
             time.Stop();
             time.Reset();
             playerY = 0;
             playerX = 0;
             attempts++;
+            LEVEL_ATTEMPTS[levelNumb]++;
             deltaTime = MILLIS_PER_TICK;
             died = true;
         }
@@ -619,7 +674,7 @@ namespace GeometryDash
 
                         if (cursorY == defaultCursorY + VIEWABLE_UP && cursorX == defaultCursorX + VIEWABLE_LEFT)
                         {
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
+                            Console.ForegroundColor = player_color;
                             FixSameColor();
 
                             Console.Write(PLAYER_CHAR);
@@ -641,6 +696,7 @@ namespace GeometryDash
                             else if (blockList.Contains(currentTile)) // Is Block
                             {
                                 Console.ForegroundColor = ConsoleColor.White;
+                                Console.BackgroundColor = Console.ForegroundColor;
                                 FixSameColor();
                                 Console.Write(BLOCK_CHAR);
                             }
@@ -697,6 +753,7 @@ namespace GeometryDash
                     else
                     {
                         Console.ForegroundColor = currentFloorColor;
+                        Console.BackgroundColor = Console.ForegroundColor;
                         FixSameColor();
                         Console.Write(BLOCK_CHAR);
                     }
@@ -714,18 +771,22 @@ namespace GeometryDash
 
         private static void FixSameColor()
         {
+
             if (Console.ForegroundColor == currentBackgroundColor)
             {
-                if (currentBackgroundColor != ConsoleColor.White)
-                {
-                    Console.BackgroundColor = ConsoleColor.White;
-                }
-                else
-                {
-                    Console.BackgroundColor = ConsoleColor.Black;
-                }
+                //if (currentBackgroundColor != ConsoleColor.Black)
+                //{
+                //    Console.BackgroundColor = ConsoleColor.Black;
+                //}
+                //else
+                //{
+                //    Console.BackgroundColor = ConsoleColor.White;
+                //}
+
+                Console.BackgroundColor = GetInverseColor(Console.ForegroundColor);
             }
         }
+
 
         private static void Configurelevel()
         {
@@ -1145,6 +1206,20 @@ namespace GeometryDash
 
         private static Random _random = new Random();
 
+
+        static ConsoleColor GetInverseColor(ConsoleColor color)
+        {
+            // Convert ConsoleColor to the corresponding RGB value
+            int colorValue = (int)color;
+
+            // Calculate the inverted RGB value using XOR operation with 15 (maximum value for ConsoleColor)
+            int invertedColorValue = colorValue ^ 15;
+
+            // Convert the inverted RGB value back to ConsoleColor
+            ConsoleColor invertedColor = (ConsoleColor)invertedColorValue;
+
+            return invertedColor;
+        }
         private static ConsoleColor GetRandomConsoleColor()
         {
             var consoleColors = Enum.GetValues(typeof(ConsoleColor));
