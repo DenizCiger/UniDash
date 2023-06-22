@@ -57,12 +57,21 @@ namespace GeometryDash
         const float JUMP_FORCE = 12.65795f / 2;
         const float FALLING_SPEED = 12.63245f / 2;
 
+        //Characters for Windows 11
+        const char PLAYER_CHAR_11 = '\u25A1';
+        const char ORB_CHAR_11 = '\u25c9';
+        const char COIN_CHAR_11 = '\u235f';
+        const char JUMP_PAD_CHAR_11 = '\u235f';
+
+        //Characters for Windows 10
+        const char PLAYER_CHAR_10 = '\u25A0';
+        const char ORB_CHAR_10 = 'O';
+        const char COIN_CHAR_10 = '*';
+        const char JUMP_PAD_CHAR_10 = '_';
+
+        //Characters good with both Win10 & Win11
         const char BLOCK_CHAR = '\u25A0';
-        const char PLAYER_CHAR = '\u25A0';//'\u25A1';
         const char SPIKE_CHAR = '\u25B2';
-        const char ORB_CHAR = '\u25c9';
-        const char COIN_CHAR = '\u235f';
-        const char JUMP_PAD_CHAR = '\u235f';
         const char PORTAL_CHAR = '\u0029';
 
         //Needed Gameplay variables
@@ -91,7 +100,7 @@ namespace GeometryDash
         static byte blueDifference = 0;
 
         //Hacks
-        static bool noClip = true;
+        static bool noClip = false;
 
         //Debug Config
         static bool showDebugPercentage = false;
@@ -151,32 +160,6 @@ namespace GeometryDash
                 Console.WriteLine("Press any key to end the program...");
                 Console.ReadKey();
             }
-        }
-
-
-        private static int GetLevelNumb()
-        {
-            bool isValid = false;
-            int input = 0;
-
-            while (!isValid)
-            {
-                Console.Write("Level Number: ");
-                isValid = Int32.TryParse(Console.ReadLine()!, out input);
-
-                if (isValid && (input <= 0 || input > LEVEL_PATHS.Length))
-                {
-                    isValid = false;
-                }
-
-                if (!isValid)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Only Levels 1 - {LEVEL_PATHS.Length} are available!");
-                    Console.ForegroundColor = ConsoleColor.White;
-                }
-            }
-            return input;
         }
 
         private static void UpdateGame(SoundPlayer gameSound)
@@ -542,6 +525,14 @@ namespace GeometryDash
                 {
                     currentShownLevel++;
                 }
+                else if (pressedKey == ConsoleKey.NumPad6)
+                {
+                    noClip = true;
+                }
+                else if (pressedKey == ConsoleKey.NumPad9)
+                {
+                    noClip = false;
+                }
 
                 if (currentShownLevel >= LEVEL_NAMES.Length)
                 {
@@ -677,7 +668,7 @@ namespace GeometryDash
                             Console.ForegroundColor = player_color;
                             FixSameColor();
 
-                            Console.Write(PLAYER_CHAR);
+                            Console.Write((winVersion >= 11) ? PLAYER_CHAR_11 : PLAYER_CHAR_10);
                         }
                         else
                         {
@@ -734,13 +725,19 @@ namespace GeometryDash
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
                                 FixSameColor();
-                                Console.Write(JUMP_PAD_CHAR);
+                                Console.Write((winVersion >= 11) ? JUMP_PAD_CHAR_11 : JUMP_PAD_CHAR_10);
                             }
                             else if (currentTile == 36) // Is Jump Orb
                             {
                                 Console.ForegroundColor = ConsoleColor.Yellow;
                                 FixSameColor();
-                                Console.Write(ORB_CHAR);
+                                Console.Write((winVersion >= 11) ? ORB_CHAR_11 : ORB_CHAR_10);
+                            }
+                            else if (currentTile == 1329) // Is Coin
+                            {
+                                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                FixSameColor();
+                                Console.Write((winVersion >= 11) ? COIN_CHAR_11 : COIN_CHAR_10);
                             }
                             else
                             {
