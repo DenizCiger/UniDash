@@ -60,7 +60,7 @@ namespace GeometryDash
         const char PLAYER_CHAR_11 = '\u25A1';
         const char ORB_CHAR_11 = '\u25c9';
         const char COIN_CHAR_11 = '\u235f';
-        const char JUMP_PAD_CHAR_11 = '\u235f';
+        const char JUMP_PAD_CHAR_11 = '\u2313';
 
         //Characters for Windows 10
         const char PLAYER_CHAR_10 = '\u25A0';
