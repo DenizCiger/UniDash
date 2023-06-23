@@ -133,6 +133,16 @@ namespace GeometryDash
                     winVersion = 10;
                 }
 
+                if (File.Exists("attempts.csv"))
+                {
+                    string[] attempts = File.ReadAllLines("attempts.csv")[0].Split(';');
+                    
+                    for (int i = 0; i < attempts.Length; i++)
+                    {
+                        LEVEL_ATTEMPTS[i] = int.Parse(attempts[i]);
+                    }
+                }
+
                 LevelSelect();
 
                 while (true)
@@ -160,6 +170,24 @@ namespace GeometryDash
                 Console.WriteLine("Press any key to end the program...");
                 Console.ReadKey();
             }
+        }
+
+
+        static void SaveAttempts()
+        {
+            string contentToWrite = "";
+
+            for (int i = 0; i < LEVEL_ATTEMPTS.Length; i++)
+            {
+                contentToWrite += LEVEL_ATTEMPTS[i];
+
+                if (i < LEVEL_ATTEMPTS.Length - 1)
+                {
+                    contentToWrite += ';';
+                }
+            }
+
+            File.WriteAllText("attempts.csv", contentToWrite);
         }
 
         private static void UpdateGame(SoundPlayer gameSound)
@@ -552,9 +580,11 @@ namespace GeometryDash
             playerX = 0;
             playerY = 0;
             attempts = 1;
+            LEVEL_ATTEMPTS[levelNumb]++;
             time.Stop();
             time.Reset();
             deltaTime = MILLIS_PER_TICK;
+            SaveAttempts();
             gameSound.Play();
         }
 
@@ -586,6 +616,7 @@ namespace GeometryDash
             attempts++;
             LEVEL_ATTEMPTS[levelNumb]++;
             deltaTime = MILLIS_PER_TICK;
+            SaveAttempts();
             died = true;
         }
 
