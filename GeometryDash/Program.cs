@@ -15,8 +15,7 @@ using System.Media;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using Test;
-
-#pragma warning disable CA1416 // Plattformkompatibilität überprüfen
+ 
 #pragma warning disable CS8605 // Unboxing a possibly null value.
 
 namespace GeometryDash
@@ -32,7 +31,7 @@ namespace GeometryDash
 
         //GamePlay Config
         static LevelGrid[,] level = new LevelGrid[10, 10];
-        static readonly string[] UI_PATHS = { "UI\\Logo.txt", "UI\\Pause.txt", "UI\\Level.txt" };
+        static readonly string[] UI_PATHS = { "UI\\Logo.txt", "UI\\Pause11.txt", "UI\\Pause10.txt", "UI\\Level.txt" };
         static readonly string[] LEVEL_PATHS = { "Data\\Levels\\StereoMadness.dat", "Data\\Levels\\BackOnTrack.dat", "Data\\Levels\\Polargeist.dat" };
         static readonly string[] SONG_PATHS = { "Data\\Songs\\StereoMadness.wav", "Data\\Songs\\BackOnTrack.wav", "Data\\Songs\\Polargeist.wav" };
         static readonly string[] LEVEL_NAMES = { "Stereo Madness", "Back On Track", "Polargeist" };
@@ -117,13 +116,14 @@ namespace GeometryDash
 
         static void Main(string[] args)
         {
-            Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Console.SetWindowSize(Console.LargestWindowWidth / 2, Console.LargestWindowHeight / 2);
-            Console.Title = "UniDash";
-            player_color = GetRandomConsoleColor();
 
             if (OperatingSystem.IsWindows() && osVersion >= 10)
             {
+                Console.OutputEncoding = System.Text.Encoding.UTF8;
+                Console.SetWindowSize(Console.LargestWindowWidth / 2, Console.LargestWindowHeight / 2);
+                Console.Title = "UniDash";
+                player_color = GetRandomConsoleColor();
+
                 if (osBuildNumb >= 22000)
                 {
                     winVersion = 11;
@@ -355,7 +355,7 @@ namespace GeometryDash
             Console.ResetColor();
             Console.Clear();
             gameSound.Stop();
-            string pauseMenu = File.ReadAllText(UI_PATHS[1]);
+            string pauseMenu = File.ReadAllText(winVersion >= 11 ? UI_PATHS[1] : UI_PATHS[2]);
 
             Console.SetCursorPosition(0, 0);
             Console.WriteLine(pauseMenu);
@@ -563,7 +563,7 @@ namespace GeometryDash
             Console.SetCursorPosition(0, 0);
             Console.WriteLine(File.ReadAllText(UI_PATHS[0]));
             Console.SetCursorPosition(0, 10);
-            Console.WriteLine(File.ReadAllText(UI_PATHS[2]));
+            Console.WriteLine(File.ReadAllText(UI_PATHS[3]));
             Console.SetCursorPosition(8, 13);
             Console.WriteLine(LEVEL_NAMES[currentLevel]);
             Console.SetCursorPosition(8, 15);
