@@ -19,6 +19,7 @@ namespace Test
         private bool _touchTriggered;   //11
         private bool _tintGround;       //14
         private int _targetColorID;     //23
+        private bool _posLocked;        //36
 
         //Set Values
         public void SetObjectID(int value)
@@ -49,6 +50,10 @@ namespace Test
         {
             _colorTriggerBlue = value;
         }
+        public void SetTriggerDuration(float value)
+        {
+            _triggerDuration = value;
+        }
         public void SetTouchTriggered(int value)
         {
             _touchTriggered = value == 1;
@@ -61,9 +66,9 @@ namespace Test
         {
             _targetColorID = value;
         }
-        public void SetTriggerDuration(float value)
+        public void SetPosLocked(int value)
         {
-            _triggerDuration = value;
+            _posLocked = value == 1;
         }
 
         // GetValues
@@ -102,6 +107,14 @@ namespace Test
         public bool GetTintGround()
         {
             return _tintGround;
+        }
+        public int GetTriggerTargetColorID()
+        {
+            return _targetColorID;
+        }
+        public bool GetPosLocked()
+        {
+            return _posLocked;
         }
     }
 }
