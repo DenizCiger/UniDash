@@ -80,14 +80,14 @@ namespace GeometryDash
         const char PORTAL_CHAR = '\u0029';
 
         //Needed Gameplay variables
-        static bool playerJumping = false;
-        static bool playerJumpPad = false;
-        static float oldYPos = 0;
         static float playerX = 0;
         static float playerY = 0;
+        static float playerYVelocity = 0;
+        static float gravity = 0;
         static Stopwatch time = new Stopwatch();
         static float deltaTime = 1000f;
         static bool died = false;
+        static bool isJumping = false;
         static long attempts = 0;
 
         static int currentGamemode = 1; // 0 cube 1 ship 2 ball 3 ufo 4 wave 5 robot 6 spider
@@ -159,7 +159,7 @@ namespace GeometryDash
                     }
 
                     UpdateGame(gameSound);
-                    Thread.Sleep(MILLIS_PER_TICK);
+                    //Thread.Sleep(MILLIS_PER_TICK);
                 }
             }
             else
@@ -284,8 +284,7 @@ namespace GeometryDash
                 switch (currentTile)
                 {
                     case 35: //Jump Pad
-                        playerJumpPad = true;
-                        oldYPos = playerY;
+                        playerYVelocity = 2.77f;
                         break;
                     default:
                         break;
@@ -296,74 +295,25 @@ namespace GeometryDash
             {
                 playerX += (float)speedValues[startSpeed] * (deltaTime / 1000f);
 
-                if (playerJumping)
+                if (!IsStandingOnBlock(playerY, playerX))
                 {
-
-                    //JumpForce is 12.65795 Units per 0.2secs
-                    playerY += JUMP_FORCE * (deltaTime / 600);
-
-                    if (playerY > oldYPos + 2f)
+                    if (playerYVelocity > -2.6)
                     {
-                        playerJumping = false;
-                        playerY = oldYPos + 2f;
+                        gravity = 0.876f;
+                        playerYVelocity -= gravity * deltaTime * 0.01f;
                     }
-                }
-                else if (playerJumpPad)
-                {
-                    playerY += JUMP_FORCE * 3 * (deltaTime / 600f);
-
-                    if (playerY > oldYPos + 4.5f)
+                    else
                     {
-                        playerJumpPad = false;
-                        playerY = oldYPos + 4.5f;
+                        gravity = 0;
+                        playerYVelocity = 0;
                     }
                 }
                 else
                 {
-                    if (playerY > 0 && !IsStandingOnBlock((int)Math.Round(playerY), (int)Math.Round(playerX)))
-                    {
-                        float distanceToFall = 0;
-
-                        if (currentGamemode == 0) //Cube
-                        {
-                            //FallSpeed is 14.63245 Units per 0.5secs
-                            distanceToFall = FALLING_SPEED * (deltaTime / 600f);
-                        }
-                        else if (currentGamemode == 1) //Ship
-                        {
-                            distanceToFall = 2f * (deltaTime / 500f);
-                        }
-
-                        bool isOkPos = false;
-
-                        while (!isOkPos)
-                        {
-                            if (distanceToFall > 0)
-                            {
-                                if ((int)Math.Round(playerY - distanceToFall) >= 0 && level[(int)Math.Round(playerY - distanceToFall), roundedPlayerX] != null && blockList.Contains(level[(int)Math.Round(playerY - distanceToFall), roundedPlayerX].GetObjectID()))
-                                {
-                                    distanceToFall -= 1;
-                                }
-                                else
-                                {
-                                    isOkPos = true;
-                                }
-                            }
-                            else
-                            {
-                                isOkPos = true;
-                                distanceToFall = 0;
-                            }
-                        }
-                        playerY -= distanceToFall;
-                    }
+                    playerYVelocity = 0;
                 }
 
-                if (playerY < 0)
-                {
-                    playerY = 0;
-                }
-
+                //Getting Inputs
                 if (Console.KeyAvailable)
                 {
                     if (Console.ReadKey(true).Key == ConsoleKey.Spacebar)
@@ -381,6 +331,15 @@ namespace GeometryDash
                     {
                         PauseGame(gameSound);
                     }
+                }
+
+                playerY += playerYVelocity * deltaTime * 0.01f;
+
+                // Check if yPos is below ground level
+                if (playerY <= 0)
+                {
+                    playerY = 0;
+                    isJumping = false; // Reset jumping state when landing
                 }
                 PrintState();
             }
@@ -637,10 +596,10 @@ namespace GeometryDash
             int roundedPlayerY = (int)Math.Round(playerY);
             int roundedPlayerX = (int)Math.Round(playerX);
 
-            if (playerY < 0.05f || IsStandingOnBlock(roundedPlayerY, roundedPlayerX))
+            if (playerY < 0.05f || IsStandingOnBlock(playerY, playerX))
             {
-                playerJumping = true;
-                oldYPos = playerY;
+                playerYVelocity = 1.94f;
+                playerY += playerYVelocity * (deltaTime / 1000f);
             }
             else
             {
@@ -652,34 +611,57 @@ namespace GeometryDash
                     {
                         if (roundedPlayerY + i >= 0 && roundedPlayerY + i < level.GetLength(0) && roundedPlayerX + j >= 0 && roundedPlayerX + j < level.GetLength(1))
                         {
-                            if (level[(roundedPlayerY + i), roundedPlayerX + j] != null && level[(roundedPlayerY + i), roundedPlayerX + j].GetObjectID() == 36)
+                            if (level[(roundedPlayerY + i), roundedPlayerX + j] != null)
                             {
-                                playerJumping = true;
-                                oldYPos = playerY;
                                 foundJumpOrb = true;
+
+                                switch (level[(roundedPlayerY + i), roundedPlayerX + j].GetObjectID())
+                                {
+                                    case 36: // Yellow Orb
+                                        playerYVelocity = 1.91f;
+                                        break;
+                                    default:
+                                        foundJumpOrb = false;
+                                        break;
+                                }
                             }
                         }
                     }
                 }
             }
+
+            if (playerYVelocity > 0.0f)
+            {
+                isJumping = true;
+            }
         }
 
-        private static bool IsStandingOnBlock(int roundedPlayerY, int roundedPlayerX)
+        private static bool IsStandingOnBlock(float PlayerY, float PlayerX)
         {
             bool isOnBlock = false;
 
-            if (roundedPlayerY - 1 >= 0 && roundedPlayerY + 1 < level.GetLength(0))
+            int roundedPlayerX = (int)Math.Round(playerX);
+            int roundedPlayerY = (int)Math.Round(playerY);
+
+            if (playerY > 0.05f)
             {
-                for (int i = -1; i < 2 && !isOnBlock; i++)
+                if (roundedPlayerY - 1 >= 0 && roundedPlayerY + 1 < level.GetLength(0))
                 {
-                    if (roundedPlayerX + i >= 0 && roundedPlayerX + i < level.GetLength(1))
+                    for (int i = -1; i < 2 && !isOnBlock; i++)
                     {
-                        if (level[(roundedPlayerY - 1), roundedPlayerX + i] != null && blockList.Contains(level[(roundedPlayerY - 1), roundedPlayerX + i].GetObjectID()))
+                        if (roundedPlayerX + i >= 0 && roundedPlayerX + i < level.GetLength(1))
                         {
-                            isOnBlock = true;
+                            if (level[(roundedPlayerY - 1), roundedPlayerX + i] != null && blockList.Contains(level[(roundedPlayerY - 1), roundedPlayerX + i].GetObjectID()))
+                            {
+                                isOnBlock = true;
+                            }
                         }
                     }
                 }
+            }
+            else
+            {
+                isOnBlock = true;
             }
             return isOnBlock;
         }
@@ -841,7 +823,7 @@ namespace GeometryDash
             Console.BackgroundColor = ConsoleColor.Black;
 
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"{((float)playerX / level.GetLength(1) * 100):f2}%    Attempt {attempts}");
+            Console.WriteLine($"{((float)playerX / level.GetLength(1) * 100):f2}%    Attempt {attempts} Velocity: {playerYVelocity:f2}");
         }
 
         private static void FixSameColor()
@@ -1283,7 +1265,6 @@ namespace GeometryDash
         }
 
         private static Random _random = new Random();
-
 
         private static ConsoleColor GetInverseColor(ConsoleColor color)
         {
